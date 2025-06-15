@@ -59,6 +59,38 @@ from handlers.events import (
     handle_chat_member_update, handle_bot_added_to_chat, error_handler
 )
 
+# Import new advanced handlers
+from handlers.antiflood import (
+    setflood_command, setfloodmode_command, flood_command, check_flood
+)
+
+from handlers.filters import (
+    addfilter_command, removefilter_command, filters_command,
+    lock_command, unlock_command, locks_command, antispam_command,
+    check_message_filters
+)
+
+from handlers.welcome import (
+    setwelcome_command, setgoodbye_command, welcome_command, goodbye_command,
+    captcha_command, cleanservice_command, handle_new_member_welcome,
+    handle_left_member_goodbye, handle_captcha_callback
+)
+
+from handlers.notes import (
+    save_command, get_command, clear_command, notes_command,
+    setrules_command, rules_command, clearrules_command, handle_note_shortcut
+)
+
+from handlers.reports import (
+    report_command, reports_command, reporthistory_command, handle_report_callback
+)
+
+from handlers.advanced_features import (
+    setlang_command, nightmode_command, slowmode_command,
+    addcmd_command, delcmd_command, listcmds_command, cleanup_command,
+    backup_command, handle_custom_command, check_night_mode
+)
+
 # Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -148,15 +180,61 @@ def main():
         application.add_handler(CommandHandler("about", about_command))
         application.add_handler(CommandHandler("commands", commands_command))
         
+        # Anti-flood commands
+        application.add_handler(CommandHandler("setflood", setflood_command))
+        application.add_handler(CommandHandler("setfloodmode", setfloodmode_command))
+        application.add_handler(CommandHandler("flood", flood_command))
+        
+        # Filter commands
+        application.add_handler(CommandHandler("addfilter", addfilter_command))
+        application.add_handler(CommandHandler("removefilter", removefilter_command))
+        application.add_handler(CommandHandler("filters", filters_command))
+        application.add_handler(CommandHandler("lock", lock_command))
+        application.add_handler(CommandHandler("unlock", unlock_command))
+        application.add_handler(CommandHandler("locks", locks_command))
+        application.add_handler(CommandHandler("antispam", antispam_command))
+        
+        # Welcome system commands
+        application.add_handler(CommandHandler("setwelcome", setwelcome_command))
+        application.add_handler(CommandHandler("setgoodbye", setgoodbye_command))
+        application.add_handler(CommandHandler("welcome", welcome_command))
+        application.add_handler(CommandHandler("goodbye", goodbye_command))
+        application.add_handler(CommandHandler("captcha", captcha_command))
+        application.add_handler(CommandHandler("cleanservice", cleanservice_command))
+        
+        # Notes and rules commands
+        application.add_handler(CommandHandler("save", save_command))
+        application.add_handler(CommandHandler("get", get_command))
+        application.add_handler(CommandHandler("clear", clear_command))
+        application.add_handler(CommandHandler("notes", notes_command))
+        application.add_handler(CommandHandler("setrules", setrules_command))
+        application.add_handler(CommandHandler("rules", rules_command))
+        application.add_handler(CommandHandler("clearrules", clearrules_command))
+        
+        # Report system commands
+        application.add_handler(CommandHandler("report", report_command))
+        application.add_handler(CommandHandler("reports", reports_command))
+        application.add_handler(CommandHandler("reporthistory", reporthistory_command))
+        
+        # Advanced feature commands
+        application.add_handler(CommandHandler("setlang", setlang_command))
+        application.add_handler(CommandHandler("nightmode", nightmode_command))
+        application.add_handler(CommandHandler("slowmode", slowmode_command))
+        application.add_handler(CommandHandler("addcmd", addcmd_command))
+        application.add_handler(CommandHandler("delcmd", delcmd_command))
+        application.add_handler(CommandHandler("listcmds", listcmds_command))
+        application.add_handler(CommandHandler("cleanup", cleanup_command))
+        application.add_handler(CommandHandler("backup", backup_command))
+        
         # Event handlers
         application.add_handler(MessageHandler(
             filters.StatusUpdate.NEW_CHAT_MEMBERS, 
-            handle_new_member
+            handle_new_member_welcome
         ))
         
         application.add_handler(MessageHandler(
             filters.StatusUpdate.LEFT_CHAT_MEMBER, 
-            handle_left_member
+            handle_left_member_goodbye
         ))
         
         # Handle bot being added to chat
@@ -177,10 +255,27 @@ def main():
             ChatMemberHandler.CHAT_MEMBER
         ))
         
+        # Callback query handlers
+        from telegram.ext import CallbackQueryHandler
+        application.add_handler(CallbackQueryHandler(
+            handle_captcha_callback, 
+            pattern=r"^captcha_"
+        ))
+        application.add_handler(CallbackQueryHandler(
+            handle_report_callback, 
+            pattern=r"^report_"
+        ))
+        
         # General message handler (should be last)
         application.add_handler(MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            handle_message
+            handle_all_messages
+        ))
+        
+        # Media message handler for filters
+        application.add_handler(MessageHandler(
+            ~filters.COMMAND & ~filters.StatusUpdate.ALL,
+            handle_all_messages
         ))
         
         # Error handler
@@ -189,8 +284,8 @@ def main():
         logger.info("Bot handlers registered successfully")
         
         # Start the bot
-        logger.info("Starting bot...")
-        application.run_polling(
+        logger.info("🤖 Starting Telegram Admin Bot...")
+        await application.run_polling(
             allowed_updates=Update.ALL_TYPES,
             drop_pending_updates=True
         )
@@ -198,6 +293,36 @@ def main():
     except Exception as e:
         logger.error(f"Failed to start bot: {e}")
         raise
+
+async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Combined message handler for all filters and checks"""
+    try:
+        # Check night mode first
+        if await check_night_mode(update, context):
+            return
+        
+        # Check flood protection
+        if await check_flood(update, context):
+            return
+        
+        # Check message filters (word filters, URL filters, media filters, spam)
+        if await check_message_filters(update, context):
+            return
+        
+        # Check for note shortcuts (#notename)
+        if await handle_note_shortcut(update, context):
+            return
+        
+        # Check for custom commands
+        if await handle_custom_command(update, context):
+            return
+        
+        # Regular message handling
+        await handle_message(update, context)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_all_messages: {e}")
+        await error_handler(update, context)
 
 if __name__ == '__main__':
     main()
