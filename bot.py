@@ -98,7 +98,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def main():
+async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Combined message handler for all filters and checks"""
+    try:
+        # Check night mode first
+        if await check_night_mode(update, context):
+            return
+        
+        # Check flood protection
+        if await check_flood(update, context):
+            return
+        
+        # Check message filters (word filters, URL filters, media filters, spam)
+        if await check_message_filters(update, context):
+            return
+        
+        # Check for note shortcuts (#notename)
+        if await handle_note_shortcut(update, context):
+            return
+        
+        # Check for custom commands
+        if await handle_custom_command(update, context):
+            return
+        
+        # Regular message handling
+        await handle_message(update, context)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_all_messages: {e}")
+        await error_handler(update, context)
+
+async def main():
     """Main function to run the bot"""
     try:
         # Validate configuration
@@ -294,35 +324,6 @@ def main():
         logger.error(f"Failed to start bot: {e}")
         raise
 
-async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Combined message handler for all filters and checks"""
-    try:
-        # Check night mode first
-        if await check_night_mode(update, context):
-            return
-        
-        # Check flood protection
-        if await check_flood(update, context):
-            return
-        
-        # Check message filters (word filters, URL filters, media filters, spam)
-        if await check_message_filters(update, context):
-            return
-        
-        # Check for note shortcuts (#notename)
-        if await handle_note_shortcut(update, context):
-            return
-        
-        # Check for custom commands
-        if await handle_custom_command(update, context):
-            return
-        
-        # Regular message handling
-        await handle_message(update, context)
-        
-    except Exception as e:
-        logger.error(f"Error in handle_all_messages: {e}")
-        await error_handler(update, context)
-
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())

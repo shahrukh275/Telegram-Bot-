@@ -35,8 +35,8 @@ class Rule(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 def update_notes_database():
-    from database import db
-    Base.metadata.create_all(bind=db.engine)
+    from database import db as database_instance
+    Base.metadata.create_all(bind=database_instance.engine)
 
 @is_admin_command
 @is_group_command

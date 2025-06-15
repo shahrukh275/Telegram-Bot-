@@ -69,8 +69,8 @@ class CustomCommand(Base):
     created_at = Column(DateTime, default=func.now())
 
 def update_advanced_database():
-    from database import db
-    Base.metadata.create_all(bind=db.engine)
+    from database import db as database_instance
+    Base.metadata.create_all(bind=database_instance.engine)
 
 # Night mode tracking
 night_mode_restrictions = {}

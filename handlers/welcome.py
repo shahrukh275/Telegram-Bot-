@@ -40,8 +40,8 @@ class PendingUsers(Base):
     captcha_message_id = Column(Integer)
 
 def update_welcome_database():
-    from database import db
-    Base.metadata.create_all(bind=db.engine)
+    from database import db as database_instance
+    Base.metadata.create_all(bind=database_instance.engine)
 
 @is_admin_command
 @is_group_command

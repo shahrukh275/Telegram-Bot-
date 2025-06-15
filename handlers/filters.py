@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Add new tables to database for filters
 from sqlalchemy import Column, Integer, String, Boolean, Text, BigInteger, DateTime
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, db as database_instance
 
 class WordFilter(Base):
     __tablename__ = 'word_filters'
@@ -48,8 +48,7 @@ class MediaFilter(Base):
 
 # Recreate database with new tables
 def update_database():
-    from database import db
-    Base.metadata.create_all(bind=db.engine)
+    Base.metadata.create_all(bind=database_instance.engine)
 
 # Common spam patterns
 SPAM_PATTERNS = [

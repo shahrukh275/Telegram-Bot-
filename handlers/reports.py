@@ -38,8 +38,8 @@ class ReportSettings(Base):
     created_at = Column(DateTime, default=func.now())
 
 def update_reports_database():
-    from database import db
-    Base.metadata.create_all(bind=db.engine)
+    from database import db as database_instance
+    Base.metadata.create_all(bind=database_instance.engine)
 
 # Track report cooldowns
 report_cooldowns = {}
